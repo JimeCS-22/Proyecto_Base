@@ -2,6 +2,8 @@ package dao;
 
 import model.Producto;
 import org.example.ConexionBD;
+
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,20 +11,22 @@ import java.util.List;
 public class ProductoDAO {
 
     // 1. Insertar Producto
-    public boolean insertar(Producto producto, String userConexion, String passConexion) {
-        // Nota: Tu tabla real requiere cod_unidad_medida y cod_tipo_impuesto (que son llaves foráneas).
-        // Aquí uso el 1 por defecto (Unidad / IVA general) para que no falle la inserción.
-        String sql = "INSERT INTO dbo.Productos_Servicios (cod_cabys, des_producto, cod_unidad_medida, mon_precio, cod_tipo_impuesto, ind_estado) VALUES (?, ?, ?, ?, ?, ?)";
+    // 1. Insertar Producto (Adaptado a los parámetros del formulario)
+    public boolean insertar(String codCabys, String desProducto, String descripcion,
+                            BigDecimal precio, int codUnidadMedida, int codTipoImpuesto,
+                            String userConexion, String passConexion) {
+
+        // Nota: Tu tabla no tiene columna 'descripcion'. Si quieres guardarla, tendrías que agregarla en SQL.
+        String sql = "INSERT INTO dbo.Productos_Servicios (cod_cabys, des_producto, mon_precio, cod_unidad_medida, cod_tipo_impuesto, ind_estado) VALUES (?, ?, ?, ?, ?, 'A')";
 
         try (Connection conn = ConexionBD.conectar(userConexion, passConexion);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, producto.getCodigo());       // cod_cabys
-            pstmt.setString(2, producto.getNombre());       // des_producto
-            pstmt.setInt(3, 1);                             // cod_unidad_medida = 1 (Unidad) por defecto
-            pstmt.setBigDecimal(4, producto.getPrecioUnitario()); // mon_precio
-            pstmt.setInt(5, 1);                             // cod_tipo_impuesto = 1 (IVA General) por defecto
-            pstmt.setString(6, producto.isActivo() ? "A" : "I");  // ind_estado
+            pstmt.setString(1, codCabys);
+            pstmt.setString(2, desProducto);
+            pstmt.setBigDecimal(3, precio);
+            pstmt.setInt(4, codUnidadMedida);
+            pstmt.setInt(5, codTipoImpuesto);
 
             pstmt.executeUpdate();
             return true;

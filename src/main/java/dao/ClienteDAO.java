@@ -9,20 +9,33 @@ import java.util.List;
 
 public class ClienteDAO {
 
-    // 1. Insertar Cliente
-    public boolean insertar(Cliente cliente, String userConexion, String passConexion) {
-        String sql = "INSERT INTO Cliente (cedula, nombre, primer_apellido, segundo_apellido, telefono, correo, direccion, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    // 1. Insertar Cliente (Adaptado a los 13 parámetros del formulario y al cifrado de BD)
+    public boolean insertar(String nomCliente, int codTipoIdentificacion, String numIdentificacion,
+                            String desProvincia, String desCanton, String desDistrito, String desBarrio,
+                            String desProfesion, String desActividadEconomica, String desCorreo,
+                            String numTelefono, String userConexion, String passConexion) {
+
+        // Usamos ENCRYPTBYPASSPHRASE para guardar los datos sensibles cifrados (como pide el REQ 006)
+        String sql = "INSERT INTO dbo.Clientes (" +
+                "nom_cliente, cod_tipo_identificacion, num_identificacion, " +
+                "des_provincia, des_canton, des_distrito, des_barrio, " +
+                "des_profesion, des_actividad_economica, des_correo, num_telefono, ind_estado" +
+                ") VALUES (?, ?, ENCRYPTBYPASSPHRASE('LlaveProyecto', ?), ?, ?, ?, ?, ?, ?, ENCRYPTBYPASSPHRASE('LlaveProyecto', ?), ENCRYPTBYPASSPHRASE('LlaveProyecto', ?), 'A')";
+
         try (Connection conn = ConexionBD.conectar(userConexion, passConexion);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, cliente.getCedula());
-            pstmt.setString(2, cliente.getNombre());
-            pstmt.setString(3, cliente.getPrimerApellido());
-            pstmt.setString(4, cliente.getSegundoApellido());
-            pstmt.setString(5, cliente.getTelefono());
-            pstmt.setString(6, cliente.getCorreo());
-            pstmt.setString(7, cliente.getDireccion());
-            pstmt.setBoolean(8, cliente.isActivo());
+            pstmt.setString(1, nomCliente);
+            pstmt.setInt(2, codTipoIdentificacion);
+            pstmt.setString(3, numIdentificacion); // Se cifra en el SQL
+            pstmt.setString(4, desProvincia);
+            pstmt.setString(5, desCanton);
+            pstmt.setString(6, desDistrito);
+            pstmt.setString(7, desBarrio);
+            pstmt.setString(8, desProfesion);
+            pstmt.setString(9, desActividadEconomica);
+            pstmt.setString(10, desCorreo);        // Se cifra en el SQL
+            pstmt.setString(11, numTelefono);      // Se cifra en el SQL
 
             pstmt.executeUpdate();
             return true;
@@ -47,7 +60,8 @@ public class ClienteDAO {
                 c.setNombre(rs.getString("nom_cliente"));
 
                 // Rellenamos con texto vacío o valores por defecto para que no se vea "null"
-                c.setCedula("Ver en reporte");
+                // (Para leer los datos cifrados se necesitaría un SP o desencriptar con una llave)
+                c.setCedula("Cifrado");
                 c.setPrimerApellido("");
                 c.setSegundoApellido("");
                 c.setTelefono("***");
@@ -65,20 +79,14 @@ public class ClienteDAO {
 
     // 3. Actualizar Cliente
     public boolean actualizar(Cliente cliente, String userConexion, String passConexion) {
-        String sql = "UPDATE Cliente SET cedula = ?, nombre = ?, primer_apellido = ?, segundo_apellido = ?, telefono = ?, correo = ?, direccion = ?, activo = ? WHERE id_cliente = ?";
+        String sql = "UPDATE dbo.Clientes SET nom_cliente = ?, ind_estado = ? WHERE cod_cliente = ?";
 
         try (Connection conn = ConexionBD.conectar(userConexion, passConexion);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, cliente.getCedula());
-            pstmt.setString(2, cliente.getNombre());
-            pstmt.setString(3, cliente.getPrimerApellido());
-            pstmt.setString(4, cliente.getSegundoApellido());
-            pstmt.setString(5, cliente.getTelefono());
-            pstmt.setString(6, cliente.getCorreo());
-            pstmt.setString(7, cliente.getDireccion());
-            pstmt.setBoolean(8, cliente.isActivo());
-            pstmt.setInt(9, cliente.getIdCliente());
+            pstmt.setString(1, cliente.getNombre());
+            pstmt.setString(2, cliente.isActivo() ? "A" : "I");
+            pstmt.setInt(3, cliente.getIdCliente());
 
             pstmt.executeUpdate();
             return true;
@@ -90,7 +98,7 @@ public class ClienteDAO {
 
     // 4. Desactivar / Eliminar Lógico de Cliente
     public boolean eliminar(int idCliente, String userConexion, String passConexion) {
-        String sql = "UPDATE Cliente SET activo = 0 WHERE id_cliente = ?";
+        String sql = "UPDATE dbo.Clientes SET ind_estado = 'I' WHERE cod_cliente = ?";
 
         try (Connection conn = ConexionBD.conectar(userConexion, passConexion);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

@@ -3,6 +3,7 @@ package view;
 import dao.ClienteDAO;
 import dao.ProductoDAO;
 import dao.FacturaDAO;
+import dao.ReporteDAO; // IMPORTANTE: Asegúrate de tener creada la clase ReporteDAO
 import model.Cliente;
 import model.Producto;
 
@@ -25,6 +26,7 @@ public class DashboardView extends JFrame {
     private ClienteDAO clienteDAO = new ClienteDAO();
     private ProductoDAO productoDAO = new ProductoDAO();
     private FacturaDAO facturaDAO = new FacturaDAO();
+    private ReporteDAO reporteDAO = new ReporteDAO(); // NUEVO
 
     // --- PALETA DE COLORES (Dark Mode elegante) ---
     private final Color COLOR_FONDO = new Color(30, 30, 40);          // Fondo general oscuro
@@ -79,6 +81,10 @@ public class DashboardView extends JFrame {
         JPanel panelFacturacion = crearPanelFacturacion();
         tabbedPane.addTab("  Emitir Factura  ", panelFacturacion);
 
+        // 4. Pestaña de Reportes
+        JPanel panelReportes = crearPanelReportes();
+        tabbedPane.addTab("  Reportes  ", panelReportes);
+
         add(tabbedPane, BorderLayout.CENTER);
     }
 
@@ -112,6 +118,28 @@ public class DashboardView extends JFrame {
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panelBotones.setBackground(COLOR_FONDO);
 
+        // Botón Nuevo Cliente
+        JButton btnNuevo = crearBoton("+ Nuevo Cliente");
+        btnNuevo.addActionListener(e -> {
+            // Asumiendo que ClienteFormDialog está en este mismo paquete 'view'
+            ClienteFormDialog dialog = new ClienteFormDialog(this, usuarioSesion, passwordSesion);
+            dialog.setVisible(true);
+
+            if (dialog.isGuardadoExitoso()) {
+                modeloTabla.setRowCount(0);
+                List<Cliente> listaActualizada = clienteDAO.listar(usuarioSesion, passwordSesion);
+                for (Cliente c : listaActualizada) {
+                    modeloTabla.addRow(new Object[]{
+                            c.getIdCliente(), c.getCedula(), c.getNombre(),
+                            c.getPrimerApellido() + " " + (c.getSegundoApellido() != null ? c.getSegundoApellido() : ""),
+                            c.getTelefono(), c.getCorreo(), c.isActivo() ? "Sí" : "No"
+                    });
+                }
+            }
+        });
+        panelBotones.add(btnNuevo);
+
+        // Botón Recargar
         JButton btnRecargar = crearBoton("Actualizar Lista");
         btnRecargar.addActionListener(e -> {
             modeloTabla.setRowCount(0);
@@ -155,6 +183,43 @@ public class DashboardView extends JFrame {
         JScrollPane scroll = new JScrollPane(tablaProductos);
         scroll.getViewport().setBackground(COLOR_PANEL);
         panel.add(scroll, BorderLayout.CENTER);
+
+        // --- BOTONES PRODUCTOS ---
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panelBotones.setBackground(COLOR_FONDO);
+
+        JButton btnNuevo = crearBoton("+ Nuevo Producto");
+        btnNuevo.addActionListener(e -> {
+            ProductoFormDialog dialog = new ProductoFormDialog(this, usuarioSesion, passwordSesion);
+            dialog.setVisible(true);
+
+            if (dialog.isGuardadoExitoso()) {
+                modeloTabla.setRowCount(0);
+                List<Producto> listaActualizada = productoDAO.listar(usuarioSesion, passwordSesion);
+                for (Producto p : listaActualizada) {
+                    modeloTabla.addRow(new Object[]{
+                            p.getCodigo(), p.getNombre(), p.getDescripcion(),
+                            "₡" + p.getPrecioUnitario(), p.getStock(), p.isActivo() ? "Sí" : "No"
+                    });
+                }
+            }
+        });
+        panelBotones.add(btnNuevo);
+
+        JButton btnRecargar = crearBoton("Actualizar Lista");
+        btnRecargar.addActionListener(e -> {
+            modeloTabla.setRowCount(0);
+            List<Producto> listaActualizada = productoDAO.listar(usuarioSesion, passwordSesion);
+            for (Producto p : listaActualizada) {
+                modeloTabla.addRow(new Object[]{
+                        p.getCodigo(), p.getNombre(), p.getDescripcion(),
+                        "₡" + p.getPrecioUnitario(), p.getStock(), p.isActivo() ? "Sí" : "No"
+                });
+            }
+        });
+        panelBotones.add(btnRecargar);
+
+        panel.add(panelBotones, BorderLayout.NORTH);
         return panel;
     }
 
@@ -180,7 +245,6 @@ public class DashboardView extends JFrame {
             cmbClientes.addItem(c);
         }
 
-        // Renderizador específico para Cliente
         cmbClientes.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -223,7 +287,6 @@ public class DashboardView extends JFrame {
             cmbProductos.addItem(p);
         }
 
-        // Renderizador específico para Producto
         cmbProductos.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -379,6 +442,78 @@ public class DashboardView extends JFrame {
                 lblTotalVal.setText("TOTAL: ₡0.00");
             } else {
                 JOptionPane.showMessageDialog(this, "Error al emitir la factura en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        return panel;
+    }
+
+    private JPanel crearPanelReportes() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBackground(COLOR_FONDO);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        // Panel de filtros superior
+        JPanel panelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        panelFiltros.setBackground(COLOR_PANEL);
+        panelFiltros.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(COLOR_ACENTO), "Filtros de Búsqueda", 0, 0, new Font("Segoe UI", Font.BOLD, 12), COLOR_ACENTO));
+
+        JLabel lblTipo = new JLabel("Reporte:");
+        lblTipo.setForeground(COLOR_TEXTO);
+        panelFiltros.add(lblTipo);
+
+        JComboBox<String> cmbTipoReporte = new JComboBox<>(new String[]{"Clientes", "Facturas", "Auditoría"});
+        estilizarComboBox(cmbTipoReporte);
+        panelFiltros.add(cmbTipoReporte);
+
+        JLabel lblDesde = new JLabel("Desde (YYYY-MM-DD):");
+        lblDesde.setForeground(COLOR_TEXTO);
+        panelFiltros.add(lblDesde);
+
+        JTextField txtDesde = new JTextField("2020-01-01 00:00:00", 12);
+        estilizarTextField(txtDesde);
+        panelFiltros.add(txtDesde);
+
+        JLabel lblHasta = new JLabel("Hasta:");
+        lblHasta.setForeground(COLOR_TEXTO);
+        panelFiltros.add(lblHasta);
+
+        JTextField txtHasta = new JTextField("2030-12-31 23:59:59", 12);
+        estilizarTextField(txtHasta);
+        panelFiltros.add(txtHasta);
+
+        JButton btnGenerar = crearBoton("Generar Reporte");
+        panelFiltros.add(btnGenerar);
+
+        panel.add(panelFiltros, BorderLayout.NORTH);
+
+        // Tabla de resultados
+        DefaultTableModel modeloReporte = new DefaultTableModel();
+        JTable tablaReporte = new JTable(modeloReporte);
+        estilizarTabla(tablaReporte);
+        JScrollPane scroll = new JScrollPane(tablaReporte);
+        scroll.getViewport().setBackground(COLOR_PANEL);
+        panel.add(scroll, BorderLayout.CENTER);
+
+        // Lógica del botón Generar
+        btnGenerar.addActionListener(e -> {
+            String tipo = (String) cmbTipoReporte.getSelectedItem();
+            String desde = txtDesde.getText().trim();
+            String hasta = txtHasta.getText().trim();
+
+            try {
+                if ("Clientes".equals(tipo)) {
+                    // El SP de clientes pide un estado ('A', 'I' o 'T' para todos)
+                    reporteDAO.cargarClientes(modeloReporte, desde, hasta, "T", usuarioSesion, passwordSesion);
+                } else if ("Facturas".equals(tipo)) {
+                    reporteDAO.cargarFacturas(modeloReporte, desde, hasta, usuarioSesion, passwordSesion);
+                } else if ("Auditoría".equals(tipo)) {
+                    // El SP de auditoría pide el nombre del usuario o 'TODOS'
+                    reporteDAO.cargarPistasAuditoria(modeloReporte, desde, hasta, "TODOS", usuarioSesion, passwordSesion);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al generar el reporte:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
