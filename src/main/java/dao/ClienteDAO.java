@@ -15,27 +15,27 @@ public class ClienteDAO {
                             String desProfesion, String desActividadEconomica, String desCorreo,
                             String numTelefono, String userConexion, String passConexion) {
 
-        // Usamos ENCRYPTBYPASSPHRASE para guardar los datos sensibles cifrados (como pide el REQ 006)
+        // Usamos CONVERT para que el dato binario sea compatible con los reportes
         String sql = "INSERT INTO dbo.Clientes (" +
                 "nom_cliente, cod_tipo_identificacion, num_identificacion, " +
                 "des_provincia, des_canton, des_distrito, des_barrio, " +
                 "des_profesion, des_actividad_economica, des_correo, num_telefono, ind_estado" +
-                ") VALUES (?, ?, ENCRYPTBYPASSPHRASE('LlaveProyecto', ?), ?, ?, ?, ?, ?, ?, ENCRYPTBYPASSPHRASE('LlaveProyecto', ?), ENCRYPTBYPASSPHRASE('LlaveProyecto', ?), 'A')";
+                ") VALUES (?, ?, CONVERT(VARBINARY(256), ?), ?, ?, ?, ?, ?, ?, CONVERT(VARBINARY(256), ?), CONVERT(VARBINARY(256), ?), 'A')";
 
         try (Connection conn = ConexionBD.conectar(userConexion, passConexion);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, nomCliente);
             pstmt.setInt(2, codTipoIdentificacion);
-            pstmt.setString(3, numIdentificacion); // Se cifra en el SQL
+            pstmt.setString(3, numIdentificacion);
             pstmt.setString(4, desProvincia);
             pstmt.setString(5, desCanton);
             pstmt.setString(6, desDistrito);
             pstmt.setString(7, desBarrio);
             pstmt.setString(8, desProfesion);
             pstmt.setString(9, desActividadEconomica);
-            pstmt.setString(10, desCorreo);        // Se cifra en el SQL
-            pstmt.setString(11, numTelefono);      // Se cifra en el SQL
+            pstmt.setString(10, desCorreo);
+            pstmt.setString(11, numTelefono);
 
             pstmt.executeUpdate();
             return true;

@@ -3,7 +3,7 @@ package view;
 import dao.ClienteDAO;
 import dao.ProductoDAO;
 import dao.FacturaDAO;
-import dao.ReporteDAO; // IMPORTANTE: Asegúrate de tener creada la clase ReporteDAO
+import dao.ReporteDAO;
 import model.Cliente;
 import model.Producto;
 
@@ -26,7 +26,7 @@ public class DashboardView extends JFrame {
     private ClienteDAO clienteDAO = new ClienteDAO();
     private ProductoDAO productoDAO = new ProductoDAO();
     private FacturaDAO facturaDAO = new FacturaDAO();
-    private ReporteDAO reporteDAO = new ReporteDAO(); // NUEVO
+    private ReporteDAO reporteDAO = new ReporteDAO();
 
     // --- PALETA DE COLORES (Dark Mode elegante) ---
     private final Color COLOR_FONDO = new Color(30, 30, 40);          // Fondo general oscuro
@@ -121,7 +121,6 @@ public class DashboardView extends JFrame {
         // Botón Nuevo Cliente
         JButton btnNuevo = crearBoton("+ Nuevo Cliente");
         btnNuevo.addActionListener(e -> {
-            // Asumiendo que ClienteFormDialog está en este mismo paquete 'view'
             ClienteFormDialog dialog = new ClienteFormDialog(this, usuarioSesion, passwordSesion);
             dialog.setVisible(true);
 
@@ -333,7 +332,7 @@ public class DashboardView extends JFrame {
 
         panel.add(panelCentro, BorderLayout.CENTER);
 
-        // --- 3. PANEL INFERIOR: Totales y Botón Emitir ---
+        // --- 3. PANEL INFERIOR: Totales y Botones de Acción ---
         JPanel panelSur = new JPanel(new BorderLayout());
         panelSur.setBackground(COLOR_PANEL);
         panelSur.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -356,9 +355,31 @@ public class DashboardView extends JFrame {
 
         JPanel panelAccion = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         panelAccion.setBackground(COLOR_PANEL);
+
+        // --- BOTÓN PARA EMITIR NOTA CRÉDITO/DÉBITO ---
+        JButton btnNota = crearBoton("Emitir Nota C/D");
+        btnNota.setBackground(new Color(200, 150, 0)); // Color mostaza/naranja para diferenciarlo
+        btnNota.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) { btnNota.setBackground(new Color(230, 180, 0)); }
+            public void mouseExited(java.awt.event.MouseEvent evt) { btnNota.setBackground(new Color(200, 150, 0)); }
+        });
+        btnNota.addActionListener(e -> {
+            // Abre el formulario de Notas
+            // Asegúrate de que la clase NotaFormDialog exista en el paquete org.example.view
+            view.NotaFormDialog dialog = new view.NotaFormDialog(this, usuarioSesion, passwordSesion);
+            dialog.setVisible(true);
+
+            if (dialog.isGuardadoExitoso()) {
+                JOptionPane.showMessageDialog(this, "¡Nota registrada con éxito en el sistema!", "Información", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        panelAccion.add(btnNota);
+
+        // Botón Emitir Factura
         JButton btnEmitirFactura = crearBoton("Emitir y Guardar Factura");
         btnEmitirFactura.setBackground(new Color(0, 150, 100));
         panelAccion.add(btnEmitirFactura);
+
         panelSur.add(panelAccion, BorderLayout.SOUTH);
 
         panel.add(panelSur, BorderLayout.SOUTH);
@@ -504,14 +525,21 @@ public class DashboardView extends JFrame {
 
             try {
                 if ("Clientes".equals(tipo)) {
-                    // El SP de clientes pide un estado ('A', 'I' o 'T' para todos)
                     reporteDAO.cargarClientes(modeloReporte, desde, hasta, "T", usuarioSesion, passwordSesion);
                 } else if ("Facturas".equals(tipo)) {
                     reporteDAO.cargarFacturas(modeloReporte, desde, hasta, usuarioSesion, passwordSesion);
                 } else if ("Auditoría".equals(tipo)) {
-                    // El SP de auditoría pide el nombre del usuario o 'TODOS'
                     reporteDAO.cargarPistasAuditoria(modeloReporte, desde, hasta, "TODOS", usuarioSesion, passwordSesion);
                 }
+
+                // Si no se cargaron filas, mostramos el mensaje de "vacío"
+                if (modeloReporte.getRowCount() == 0) {
+                    if (modeloReporte.getColumnCount() == 0) {
+                        modeloReporte.addColumn("Mensaje");
+                    }
+                    modeloReporte.addRow(new Object[]{"No hay registros para este reporte en las fechas seleccionadas."});
+                }
+
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al generar el reporte:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
